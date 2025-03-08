@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Reflex</title>
+    <style>
+        /* [Previous CSS remains unchanged] */
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #6b7280, #9ca3af);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1%, transparent 2%) repeat;
+            background-size: 20px 20px;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #ui {
+            color: #d1d5db;
+            font-size: 28px;
+            text-shadow: 0 0 4px rgba(168, 85, 247, 0.5);
+            margin-bottom: 15px;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 5px 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 6px rgba(168, 85, 247, 0.3);
+            z-index: 1;
+        }
+
+        #game-container {
+            width: 600px;
+            height: 700px;
+            background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
+            border: 4px solid #8b5cf6;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            z-index: 1;
+        }
+
+        .tile {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.9;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 0 6px rgba(168, 85, 247, 0.2);
+        }
+
+        .tile:hover {
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+
+        #pattern-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .pattern-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .pattern-tile {
+            width: 45px;
+            height: 45px;
+            border-radius: 5px;
+            opacity: 0.8;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid #d1d5db;
+        }
+
+        .clicked-tile {
+            position: absolute;
+            top: 55px;
+            left: 0;
+            width: 45px;
+            height: 45px;
+            border-radius: 5px;
+            opacity: 1;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid #6b7280;
+        }
+
+        #time-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 15px;
+            background: linear-gradient(to right, #d1d5db, #a3bffa);
+            transition: width 0.1s linear;
+            box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
+        }
+
+        #reset {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 25px;
+            background: #e5e7eb;
+            border: 2px solid #8b5cf6;
+            color: #8b5cf6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
+        }
+
+        #reset:hover {
+            background: #a3bffa;
+            color: #4b5563;
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        #game-over-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
+            border: 4px solid #8b5cf6;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            z-index: 10;
+            text-align: center;
+            color: #4b5563;
+            font-size: 24px;
+        }
+
+        #game-over-popup button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #e5e7eb;
+            border: 2px solid #8b5cf6;
+            color: #8b5cf6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        #game-over-popup button:hover {
+            background: #a3bffa;
+            color: #4b5563;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 5;
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
+            border: 4px solid #8b5cf6;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: #4b5563;
+            z-index: 10;
+        }
+
+        #start-screen h1 {
+            margin: 0 0 10px;
+            color: #8b5cf6;
+        }
+
+        #start-screen p {
+            margin: 0 0 15px;
+        }
+
+        #start-screen button {
+            padding: 10px 20px;
+            background: #e5e7eb;
+            border: 2px solid #8b5cf6;
+            color: #8b5cf6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        #start-screen button:hover {
+            background: #a3bffa;
+            color: #4b5563;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+    <div id="start-screen">
+        <h1>Neon Reflex</h1>
+        <p>Match the pattern! You have 3 hearts (🧡).</p>
+        <button id="start-btn">Start</button>
+    </div>
+    <div id="ui" style="display: none;"></div>
+    <div id="game-container" style="display: none;">
+        <div id="pattern-display"></div>
+        <div id="time-bar"></div>
+        <button id="reset">Reset</button>
+    </div>
+    <div id="overlay"></div>
+    <div id="game-over-popup">
+        <div id="popup-message"></div>
+        <button id="play-again">Play Again</button>
+    </div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const patternDisplay = document.getElementById('pattern-display');
+        const ui = document.getElementById('ui');
+        const timeBar = document.getElementById('time-bar');
+        const resetBtn = document.getElementById('reset');
+        const overlay = document.getElementById('overlay');
+        const gameOverPopup = document.getElementById('game-over-popup');
+        const popupMessage = document.getElementById('popup-message');
+        const playAgainBtn = document.getElementById('play-again');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+
+        const images = ['color1.png', 'color2.png', 'color3.png', 'color4.jpg'];
+        let tiles = [];
+        let pattern = [];
+        let playerSequence = [];
+        let score = 0;
+        let timeLeft = 120;
+        let gameActive = false;
+        let difficulty = 2;
+        let lives = 3;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let lastClickTime = 0;
+        const debounceTime = 200; // 200ms debounce period
+
+        function createTiles() {
+            tiles.forEach(tile => tile.remove());
+            tiles = [];
+            for (let i = 0; i < 16; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.style.left = `${(i % 4) * 120 + 60}px`;
+                tile.style.top = `${Math.floor(i / 4) * 120 + 150}px`;
+                tile.image = images[Math.floor(Math.random() * images.length)];
+                tile.style.backgroundImage = `url(${tile.image})`;
+                tile.addEventListener('click', () => handleTileClick(tile));
+                container.appendChild(tile);
+                tiles.push(tile);
+            }
+        }
+
+        function generatePattern() {
+            pattern = [];
+            patternDisplay.innerHTML = '';
+            for (let i = 0; i < difficulty; i++) {
+                const image = images[Math.floor(Math.random() * images.length)];
+                pattern.push(image);
+                const patternContainer = document.createElement('div');
+                patternContainer.className = 'pattern-container';
+                const patternTile = document.createElement('div');
+                patternTile.className = 'pattern-tile';
+                patternTile.style.backgroundImage = `url(${image})`;
+                patternContainer.appendChild(patternTile);
+                patternDisplay.appendChild(patternContainer);
+            }
+            playerSequence = [];
+        }
+
+        function showEndPopup(message) {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+            }
+            popupMessage.textContent = `${message} Score: ${score} | 🧡 ${lives} | High: ${highScore}`;
+            overlay.style.display = 'block';
+            gameOverPopup.style.display = 'block';
+        }
+
+        function handleTileClick(tile) {
+            const currentTime = Date.now();
+            
+            // Check if enough time has passed since last click
+            if (currentTime - lastClickTime < debounceTime || !gameActive) {
+                return;
+            }
+            
+            lastClickTime = currentTime;
+            const clickIndex = playerSequence.length;
+            playerSequence.push(tile.image);
+            tile.style.transform = 'scale(0.95)';
+            setTimeout(() => tile.style.transform = 'scale(1)', 100);
+
+            if (clickIndex < pattern.length) {
+                const patternContainer = patternDisplay.children[clickIndex];
+                const clickedTile = document.createElement('div');
+                clickedTile.className = 'clicked-tile';
+                clickedTile.style.backgroundImage = `url(${tile.image})`;
+                patternContainer.appendChild(clickedTile);
+            }
+
+            if (playerSequence[clickIndex] !== pattern[clickIndex]) {
+                lives--;
+                playerSequence = [];
+                patternDisplay.innerHTML = '';
+                generatePattern();
+                if (lives <= 0) {
+                    gameActive = false;
+                    showEndPopup("Game Over!");
+                }
+                return;
+            }
+
+            if (playerSequence.length === pattern.length) {
+                score += difficulty * 10 + Math.floor(timeLeft / 10);
+                timeLeft = Math.min(120, timeLeft + 18);
+                difficulty = Math.min(6, Math.floor(score / 50) + 2);
+                generatePattern();
+            }
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            timeLeft -= 0.08 * (difficulty / 2);
+            timeBar.style.width = `${(timeLeft / 120) * 600}px`;
+            ui.textContent = `Score: ${score} | Game: ${difficulty} | 🧡 ${lives} | High: ${highScore}`;
+
+            if (timeLeft <= 0) {
+                gameActive = false;
+                showEndPopup("Time Out!");
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            score = 0;
+            timeLeft = 120;
+            difficulty = 2;
+            lives = 3;
+            gameActive = true;
+            lastClickTime = 0; // Reset debounce timer
+            overlay.style.display = 'none';
+            gameOverPopup.style.display = 'none';
+            startScreen.style.display = 'none';
+            ui.style.display = 'block';
+            container.style.display = 'block';
+            createTiles();
+            generatePattern();
+            gameLoop();
+        }
+
+        resetBtn.addEventListener('click', resetGame);
+        playAgainBtn.addEventListener('click', resetGame);
+        startBtn.addEventListener('click', resetGame);
+
+        // Particle System
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 0.2 - 0.1;
+                this.speedY = Math.random() * 0.2 - 0.1;
+                this.opacity = Math.random() * 0.2 + 0.1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width) this.x = 0;
+                else if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                else if (this.y < 0) this.y = canvas.height;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(168, 85, 247, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particlesArray = [];
+        const numberOfParticles = 100;
+
+        for (let i = 0; i < numberOfParticles; i++) {
+            particlesArray.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+                
+                for (let j = i; j < particlesArray.length; j++) {
+                    const dx = particlesArray[i].x - particlesArray[j].x;
+                    const dy = particlesArray[i].y - particlesArray[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(168, 85, 247, ${0.1 - distance/1000})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        animateParticles();
+        startScreen.style.display = 'block';
+    </script>
+</body>
+</html>
